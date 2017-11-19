@@ -15,8 +15,10 @@ public class LRUServiceImplTest {
         putAndShow(service,"key5", "val5");
         System.out.println("GET: " + service.get("key1"));
         putAndShow(service,"key6", "val6");
-        service.setCapacity(6);
         putAndShow(service,"key7", "val7");
+        service.setCapacity(6);
+        putAndShow(service,"key8", "val8");
+        putAndShow(service,"key9", "val9");
     }
 
     private static String putAndShow(LRUServiceImpl service, String key, Object object) {

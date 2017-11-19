@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartHttpServletRequest;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -26,57 +26,40 @@ public class LRUController {
     }
 
     @GetMapping("/get/{key}")
-    final public @ResponseBody Object get(@PathVariable String key) {
-        return lruService.get(key);
+    final public ResponseEntity get(@PathVariable String key) {
+        return new ResponseEntity(lruService.get(key), lruService.getHttpHeaders(key), HttpStatus.OK);
     }
 
-    @RequestMapping(value = "/put/{key}", method = RequestMethod.POST, consumes = MediaType.ALL_VALUE, produces = MediaType.ALL_VALUE)
-    final public @ResponseBody Object put(@PathVariable(name="key") String key,
+    @RequestMapping(value = "/put/{key}", method = RequestMethod.POST, produces = MediaType.ALL_VALUE, consumes = MediaType.ALL_VALUE)
+    final public ResponseEntity putBinary(@PathVariable(name="key") String key,
+                                          @RequestParam(value = "file", required = false) MultipartFile file,
                                           HttpServletRequest request) {
+        HttpHeaders headers = lruService.getHttpHeaders(key);
+        Object value;
         try {
-            return lruService.put(key, IOUtils.toString(request.getReader()));
+            if (file == null) {
+                value = lruService.put(key, IOUtils.toString(request.getReader()));
+            } else {
+                value = lruService.put(key, IOUtils.toByteArray(file.getInputStream()), file.getOriginalFilename());
+            }
+            return new ResponseEntity(value, headers, HttpStatus.OK);
         } catch (IOException | OutOfMemoryError e) {
             logger.error("Couldn't put value for key: " + key, e);
-            return "OutOfMemoryError|IOException - " + e.getMessage();
+            return new ResponseEntity("Couldn't put value for key: " + key, headers, HttpStatus.BAD_REQUEST);
         }
     }
-
-    @RequestMapping(value = "/getb/{key}", method = RequestMethod.GET, produces = MediaType.ALL_VALUE, consumes = MediaType.ALL_VALUE)
-    final public ResponseEntity<byte[]> getBinary(@PathVariable(name="key") String key) {
-        HttpHeaders headers = getHttpHeaders();
-        return new ResponseEntity<>((byte[]) lruService.get(key), headers, HttpStatus.OK);
-    }
-
-    @RequestMapping(value = "/putb/{key}", method = RequestMethod.POST, produces = MediaType.ALL_VALUE, consumes = MediaType.ALL_VALUE)
-    final public ResponseEntity<byte[]> putBinary(@PathVariable(name="key") String key,
-                                                  HttpServletRequest request) {
-        HttpHeaders headers = getHttpHeaders();
-        try {
-            return new ResponseEntity<>((byte[]) lruService.put(key, IOUtils.toByteArray(request.getInputStream())), headers, HttpStatus.OK);
-        } catch (IOException | OutOfMemoryError e) {
-            logger.error("Couldn't put binary value for key: " + key, e);
-            return new ResponseEntity<>(new byte[0], headers, HttpStatus.BAD_REQUEST);
-        }
-    }
-
-    private HttpHeaders getHttpHeaders() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType("application/octet-stream"));
-        String filename = "output.jpg";
-        headers.setContentDispositionFormData(filename, filename);
-        headers.setCacheControl("must-revalidate, post-check=0, pre-check=0");
-        return  headers;
-    }
-
 
     @PutMapping("/changeCapacity")
-    final public @ResponseBody String changeCapacity(@RequestBody String capacityString) {
+    final public ResponseEntity changeCapacity(@RequestBody String capacityString) {
         try {
             int capacity = Integer.parseInt(capacityString);
+            if (capacity < 0) {
+                return new ResponseEntity("Capacity cannot be smaller than 0.", HttpStatus.BAD_REQUEST);
+            }
             lruService.setCapacity(capacity);
-            return "Capacity changed";
+            return new ResponseEntity("Capacity changed.", HttpStatus.OK);
         } catch (NumberFormatException e) {
-            return "Couldn't format capacity number";
+            return new ResponseEntity("Couldn't parse capacity size.", HttpStatus.BAD_REQUEST);
         }
     }
 }
