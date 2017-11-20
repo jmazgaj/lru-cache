@@ -14,7 +14,7 @@ public class BackgroundService {
         this.lruService = lruService;
     }
 
-    @Scheduled(fixedRate = 10000)
+    @Scheduled(fixedRate = 10000, initialDelay = 5000)
     public void removeUnusedKeys() {
         lruService.removeUnusedKeyNames();
     }
