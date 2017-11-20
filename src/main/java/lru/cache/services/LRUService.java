@@ -1,4 +1,4 @@
-package lru.main.services;
+package lru.cache.services;
 
 import org.springframework.http.HttpHeaders;
 
@@ -12,5 +12,9 @@ public interface LRUService {
 
     void setCapacity(int size);
 
+    int getCapacity();
+
     HttpHeaders getHttpHeaders(Object key);
+
+    int removeUnusedKeyNames();
 }

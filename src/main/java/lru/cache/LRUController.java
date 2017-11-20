@@ -1,6 +1,6 @@
-package lru.main;
+package lru.cache;
 
-import lru.main.services.LRUService;
+import lru.cache.services.LRUService;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,12 +8,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 
 @Controller
+@SuppressWarnings("unchecked")
 public class LRUController {
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -31,9 +33,9 @@ public class LRUController {
     }
 
     @RequestMapping(value = "/put/{key}", method = RequestMethod.POST, produces = MediaType.ALL_VALUE, consumes = MediaType.ALL_VALUE)
-    final public ResponseEntity putBinary(@PathVariable(name="key") String key,
-                                          @RequestParam(value = "file", required = false) MultipartFile file,
-                                          HttpServletRequest request) {
+    final public ResponseEntity put(@PathVariable(name="key") String key,
+                                    @RequestParam(value = "file", required = false) MultipartFile file,
+                                    HttpServletRequest request) throws MultipartException {
         HttpHeaders headers = lruService.getHttpHeaders(key);
         Object value;
         try {
@@ -63,3 +65,4 @@ public class LRUController {
         }
     }
 }
+
