@@ -1,5 +1,7 @@
 package lru.cache.services;
 
+import lru.cache.cache.Cache;
+import lru.cache.cache.LRUCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,27 +19,20 @@ public class LRUServiceImpl implements LRUService {
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    private Map<Object, Object> cache;
+    private Cache lruCache;
     private Map<Object, String> keyNameMap;
-    private int capacity;
 
     @Autowired
     public LRUServiceImpl(@Value("${lru.cache.size}") int initialCapacity) {
         logger.info("LRUService init. Initial capacity: {}", initialCapacity);
-        this.capacity = initialCapacity;
-        this.cache = new LinkedHashMap<Object, Object>(initialCapacity, 0.75f, true) {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry<Object, Object> eldest) {
-                return size() > capacity;
-            }
-        };
+        this.lruCache = new LRUCache<>(initialCapacity, 0.75f, true);
         this.keyNameMap = new ConcurrentHashMap<>();
     }
 
     @Override
     public Object get(Object key) {
         logger.info("Retrieving value for key: {}", key);
-        return cache.get(key);
+        return lruCache.get(key);
     }
 
     @Override
@@ -49,18 +44,18 @@ public class LRUServiceImpl implements LRUService {
     public Object put(Object key, Object value, String name) {
         logger.info("Setting value for key: {}", key);
         keyNameMap.put(key, name);
-        return cache.put(key, value);
+        return lruCache.put(key, value);
     }
 
     @Override
     public void setCapacity(int capacity) {
-        logger.info("Changing capacity. Current: {}, new: {}", this.capacity, capacity);
-        this.capacity = capacity;
+        logger.info("Changing capacity. Current: {}, new: {}", capacity, capacity);
+        this.lruCache.setCapacity(capacity);
     }
 
     @Override
     public int getCapacity() {
-        return this.capacity;
+        return this.lruCache.getCapacity();
     }
 
     @Override
@@ -82,7 +77,7 @@ public class LRUServiceImpl implements LRUService {
         logger.info("Started removing keys from keyNameMap.");
         int counter = 0;
         for (Object key : keyNameMap.keySet()) {
-            if (!cache.containsKey(key)) {
+            if (!lruCache.containsKey(key)) {
                 logger.info("Removing key {}.", key);
                 keyNameMap.remove(key);
                 ++counter;
